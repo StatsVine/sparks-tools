@@ -1,14 +1,31 @@
 import csv
+import functools
 import re
 import sys
+import traceback
 from collections import defaultdict
 
 import yaml
 
 
+TYPE_REFERENCE = "reference"
+VALID_TYPES = ["string", "integer", "enum", TYPE_REFERENCE]
+
+
 def load_yaml(path):
     with open(path, "r") as f:
         return yaml.safe_load(f)
+
+
+@functools.cache
+def load_reference_values(file_path, column_name):
+    values = []
+    with open(file_path, "r", newline="") as csvfile:
+        reader = csv.DictReader(csvfile)
+        if column_name in reader.fieldnames:
+            for row in reader:
+                values.append(row[column_name])
+    return values
 
 
 def validate_field(value, rules, field_name, row_num):
@@ -40,6 +57,16 @@ def validate_field(value, rules, field_name, row_num):
             f"Row {row_num}: '{field_name}' value '{value}' not in allowed values"
         )
 
+    # Check ref value valid
+    if "type" in rules and rules["type"] == TYPE_REFERENCE:
+        ref_values = load_reference_values(
+            rules["reference_file"], rules["reference_column"]
+        )
+        if value not in ref_values:
+            errors.append(
+                f"Row {row_num}: '{field_name}' value '{value}' not in reference file"
+            )
+
     return errors
 
 
@@ -69,6 +96,30 @@ def validate_csv(csv_path, core_schema_path, fail_fast=False):
     with open(csv_path, newline="") as f:
         reader = csv.DictReader(f)
         prev_id = None
+
+        # Verify schema
+        for field, rules in core_schema.items():
+            # Verify field type
+            field_type = rules.get("type")
+            if field_type not in VALID_TYPES:
+                errors.append(f"Schema: {field} is invalid type '{field_type}'")
+            # Verify reference type
+            if field_type == "reference":
+                try:
+                    load_reference_values(
+                        rules["reference_file"], rules["reference_column"]
+                    )
+                except Exception as e:
+                    errors.append(f"Error loading reference file for {field}: {e}")
+                    traceback.print_exc()
+        # Escape for schema errors
+        if errors:
+            print(f"\nSchema validation failed with {len(errors)} errors:\n")
+            for e in errors:
+                print(e)
+            sys.exit(2)
+
+        # Verify row-by-row
         for i, row in enumerate(reader, start=2):  # start=2 to account for header
             # Verify sorting
             if prev_id and row.get("sparks_id") < prev_id:
