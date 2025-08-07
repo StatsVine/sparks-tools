@@ -19,12 +19,11 @@ def load_yaml(path):
 
 @functools.cache
 def load_reference_values(file_path, column_name):
-    values = []
+    values = set()
     with open(file_path, "r", newline="") as csvfile:
         reader = csv.DictReader(csvfile)
-        if column_name in reader.fieldnames:
-            for row in reader:
-                values.append(row[column_name])
+        for row in reader:
+            values.add(row[column_name])
     return values
 
 
