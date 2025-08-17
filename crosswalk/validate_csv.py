@@ -38,7 +38,7 @@ def validate_field(value, rules, field_name, row_num):
         errors.append(f"Row {row_num}: '{field_name}' is required")
 
     # Check whitespace
-    if len(value) != len(value.strip()):
+    if value and len(value) != len(value.strip()):
         errors.append(
             f"Row {row_num}: '{field_name}' contains leading/trailing whitespace."
         )
@@ -51,13 +51,13 @@ def validate_field(value, rules, field_name, row_num):
             )
 
     # Check enum value valid
-    if "enum" in rules and value not in rules["enum"]:
+    if value and "enum" in rules and value not in rules["enum"]:
         errors.append(
             f"Row {row_num}: '{field_name}' value '{value}' not in allowed values"
         )
 
     # Check ref value valid
-    if "type" in rules and rules["type"] == TYPE_REFERENCE:
+    if value and "type" in rules and rules["type"] == TYPE_REFERENCE:
         ref_values = load_reference_values(
             rules["reference_file"], rules["reference_column"]
         )
