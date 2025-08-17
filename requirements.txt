@@ -9,6 +9,7 @@ filelock==3.18.0
 flake8==7.2.0
 flake8-bugbear==24.12.12
 Flake8-pyproject==1.2.3
+haversine==2.9.0
 identify==2.6.10
 idna==3.10
 isort==6.0.1
