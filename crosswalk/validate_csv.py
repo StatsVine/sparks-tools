@@ -9,7 +9,7 @@ import yaml
 
 
 TYPE_REFERENCE = "reference"
-VALID_TYPES = ["string", "integer", "enum", TYPE_REFERENCE]
+VALID_TYPES = ["string", "integer", "enum", "decimal", TYPE_REFERENCE]
 
 
 def load_yaml(path):
