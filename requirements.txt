@@ -6,9 +6,9 @@ charset-normalizer==3.4.2
 click==8.2.0
 distlib==0.3.9
 filelock==3.18.0
-flake8==7.2.0
 flake8-bugbear==24.12.12
 Flake8-pyproject==1.2.3
+flake8==7.2.0
 haversine==2.9.0
 identify==2.6.10
 idna==3.10
@@ -24,6 +24,7 @@ platformdirs==4.3.8
 pre_commit==4.2.0
 pycodestyle==2.13.0
 pyflakes==3.3.2
+pytest==7.4.3
 PyYAML==6.0.2
 requests==2.32.3
 urllib3==2.4.0
