@@ -69,18 +69,43 @@ def validate_field(value, rules, field_name, row_num):
     return errors
 
 
-def check_duplicate_ids(id_field_name: str, id_val: any, seen_ids: set, line_idx: int):
+def check_duplicate_ids(
+    id_field_name: str,
+    id_val: any,
+    seen_ids: set,
+    line_idx: int,
+    scope: tuple = (),
+    scope_fields: list = None,
+):
+    """Flag a repeated value for a unique field.
+
+    An empty value is never a duplicate -- a blank means "no id here", and
+    several rows may legitimately have none.
+
+    `scope` narrows uniqueness to rows sharing those values. Some identifiers
+    are only unique within a namespace: ESPN reuses team id 11 for the
+    Athletics, the Colts and the Pacers, and league names such as "Premier
+    League" recur across sports.
+    """
     errors = []
 
     if not id_val:
         return errors
 
-    if id_val in seen_ids:
-        errors.append(
-            f"Row {line_idx}: Duplicate value '{id_val}' for column '{id_field_name}'"
-        )
+    key = scope + (id_val,)
+    if key in seen_ids:
+        if scope:
+            where = ", ".join(f"{f}='{v}'" for f, v in zip(scope_fields or [], scope))
+            errors.append(
+                f"Row {line_idx}: Duplicate value '{id_val}' for column "
+                f"'{id_field_name}' within {where}"
+            )
+        else:
+            errors.append(
+                f"Row {line_idx}: Duplicate value '{id_val}' for column '{id_field_name}'"
+            )
     else:
-        seen_ids.add(id_val)
+        seen_ids.add(key)
     return errors
 
 
@@ -102,6 +127,15 @@ def validate_csv(csv_path, core_schema_path, fail_fast=False):
             field_type = rules.get("type")
             if field_type not in VALID_TYPES:
                 errors.append(f"Schema: {field} is invalid type '{field_type}'")
+            # Verify reference type
+            # Verify unique_within references real fields; a typo here would
+            # silently widen uniqueness back to global
+            for scope_field in rules.get("unique_within", []):
+                if scope_field not in core_schema:
+                    errors.append(
+                        f"Schema: {field} unique_within references "
+                        f"unknown field '{scope_field}'"
+                    )
             # Verify reference type
             if field_type == "reference":
                 try:
@@ -133,7 +167,13 @@ def validate_csv(csv_path, core_schema_path, fail_fast=False):
                 errors.extend(validate_field(value, rules, field, i))
                 if rules.get("unique", False):
                     # Metadata fields assumed to not be unique
-                    errors.extend(check_duplicate_ids(field, value, seen_ids[field], i))
+                    scope_fields = rules.get("unique_within", [])
+                    scope = tuple(row.get(f, "") for f in scope_fields)
+                    errors.extend(
+                        check_duplicate_ids(
+                            field, value, seen_ids[field], i, scope, scope_fields
+                        )
+                    )
                 if fail_fast and errors:
                     print("\n".join(errors))
                     sys.exit(1)
